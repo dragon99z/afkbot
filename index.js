@@ -1,6 +1,7 @@
-const fs = require("fs");
+const fs = require('node:fs');
 const fetch = require("node-fetch");
-const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
+const path = require('node:path');
+const { Client, GatewayIntentBits, ActivityType, Collection, Events, SlashCommandBuilder,PermissionFlagsBits } = require("discord.js");
 const discordbot = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -8,13 +9,58 @@ const discordbot = new Client({
     GatewayIntentBits.MessageContent,
   ],
 });
+
+discordbot.commands = new Collection();
+
+sellCommand = new SlashCommandBuilder()
+		.setName('sell')
+		.setDescription('Sells the items')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false);
+sellCommand.execute = async (interaction) => {
+    selling = true;
+    doTrades(mcbot, discordbot);
+    await interaction.reply(`Selling the items.`);
+}
+
+msgCommand = new SlashCommandBuilder()
+		.setName('msg')
+		.setDescription('Send Message')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false)
+        .addStringOption(option =>
+            option.setName('message')
+                .setDescription('The message to be send')
+                .setRequired(true));
+msgCommand.execute = async (interaction) => {
+    mcbot.chat(interaction.options.getString('message'));
+    await interaction.reply(`Message Send!`);
+}
+
+stopCommand = new SlashCommandBuilder()
+		.setName('stop')
+		.setDescription('Stop the Bot')
+    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+    .setDMPermission(false);
+stopCommand.execute = async (interaction) => {
+    mcbot.end();
+    await interaction.reply(`Bot Stopped!`);
+    discordbot.logout();
+    exit();
+}
+
+discordbot.commands.set('sell', sellCommand);
+discordbot.commands.set('msg', msgCommand);
+discordbot.commands.set('stop', stopCommand);
+
 const mineflayer = require("mineflayer");
+const { exit } = require('node:process');
 const mineflayerViewer = require("prismarine-viewer").mineflayer;
 require("dotenv-safe").config();
 console.time("timeElapsed");
 let deaths = 0;
 var purse;
-var api = "";
+var api = process.env.API_KEY;
 var botid = "";
 var selling = false;
 var windowid;
@@ -29,11 +75,14 @@ var mcbot = mineflayer.createBot({
   hideErrors: true,
 });
 
+var startTime = Math.floor(new Date().getTime() / 1000);
+
 mcbot.once("login", () => {
   console.log(`logged in as ${mcbot.username}`);
   discordbot.user.setActivity({
     name: "Hypixel",
     type: ActivityType.Playing,
+    timestamps: { start: startTime },
   });
   discordbot.user.setStatus("online");
   runtimer(mcbot, discordbot);
@@ -54,7 +103,7 @@ mcbot.once("login", () => {
     console.log(e);
   }
   setTimeout(() => {
-    mcbot.chat("/api new");
+    //mcbot.chat("/api new");
     mcbot.setQuickBarSlot("0");
     setTimeout(() => {
       mcbot.chat("/locraw");
@@ -137,6 +186,9 @@ mcbot.on("messagestr", (message) => {
       console.log(deaths);
       discordbot.user.setActivity(`Deaths: ${deaths}`);
     }
+  } else if (message.includes("You need the Cookie Buff to use this feature!") && selling){
+    selling = false;
+    console.log("No Booster Cookie");
   } else if (message.includes("sold") && message.includes("Coins")) {
     var add = message.split("for ")[1].split(" Coins")[0].replace(",", "");
     console.log(add);
@@ -173,15 +225,26 @@ discordbot.on("ready", () => {
   );
 });
 
-discordbot.on("messageCreate", (message) => {
-  if (
-    message.author.id === process.env.DISCORD_USER_ID &&
-    message.channel.id === process.env.DISCORD_CHANNEL_ID
-  ) {
-    mcbot.chat(message.content);
-    selling = true;
-    doTrades(mcbot, discordbot);
-  }
+discordbot.on(Events.InteractionCreate, async interaction => {
+	if (!interaction.isChatInputCommand()) return;
+
+	const command = interaction.client.commands.get(interaction.commandName);
+
+	if (!command) {
+		console.error(`No command matching ${interaction.commandName} was found.`);
+		return;
+	}
+
+	try {
+		await command.execute(interaction);
+	} catch (error) {
+		console.error(error);
+		if (interaction.replied || interaction.deferred) {
+			await interaction.followUp({ content: 'There was an error while executing this command!', ephemeral: true });
+		} else {
+			await interaction.reply({ content: 'There was an error while executing this command!', ephemeral: true });
+		}
+	}
 });
 
 function startBank(mcbot, discordbot) {
@@ -308,54 +371,6 @@ function confirmsell(mcbot, discordbot) {
     }
   });
 }
-// Send messages with delays
-// mcbot.chat("/l");
-// setTimeout(() => {
-//   mcbot.chat("/skyblock"),
-//     setTimeout(() => {
-//       mcbot.chat("/hub");
-//       setTimeout(() => {
-//         mcbot.chat("/trades");
-//         mcbot.on("windowOpen", (window) => {
-//           console.log("opened");
-//           console.log(window.title);
-//           if (window.title.txt === "Trades") {
-//             console.log("trades menu");
-//             const sulphurItems = mcbot.inventory
-//               .items()
-//               .filter((item) =>
-//                 [
-//                   "Sulphur",
-//                   "Enchanted Sulphur",
-//                   "Enchanted Sulphur Cube",
-//                 ].includes(item.name)
-//               );
-//             sulphurItems.forEach((item) => {
-//               mcbot.clickWindow(item.slot, 0, 0);
-//               setTimeout(() => {}, 100);
-//             });
-//             mcbot.clickWindow(0, 0, 0);
-//             mcbot.closeWindow(window);
-//             selling = false;
-//           }
-//         });
-//       }, 2000);
-//     }, 2000);
-// }, 3000);
-
-// // Wait for Trades menu to open and click specified items
-// // Wait and perform clicks in inventory
-// setTimeout(() => {
-//   mcbot.chat("/bz");
-//   setTimeout(() => {
-//     mcbot.clickWindow(12, 0, 0); // Click on the cauldron
-//     setTimeout(() => {}, 100);
-//     mcbot.clickWindow(38, 0, 0); // Click on the hopper
-//     mcbot.closeWindow(mcbot.currentWindow);
-//     selling = false;
-//   }, 3000);
-// }, 12000);
-//}
 
 function checkStatus(mcbot) {
   setInterval(() => {
@@ -467,10 +482,11 @@ function deathCount(mcbot, discordbot) {
 }
 
 function sendMessage(discordbot, message) {
-  discordbot.guilds.cache
-    .get(process.env.DISCORD_SERVER_ID)
-    .channels.cache.get(process.env.DISCORD_CHANNEL_ID)
-    .send(message);
+  console.log(message);
+  if((typeof message === "string" && message.length === 0) || message === null)
+    return;
+  const channel = discordbot.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
+  channel.send(message);
 }
 
 function visitPlayer() {
@@ -514,4 +530,7 @@ mcbot.on("error", (error) => {
   console.log(error);
   sendMessage(discordbot, error);
 });
+
 discordbot.login(process.env.DISCORD_BOT_TOKEN);
+
+module.exports = { doTrades, selling, mcbot, discordbot };
