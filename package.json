@@ -9,9 +9,10 @@
   "author": "jdmagic",
   "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.3.0",
-    "dotenv-safe": "^8.2.0",
-    "mineflayer": "^4.4.0",
-    "prismarine-viewer": "^1.23.0"
+    "axios": "^1.7.7",
+    "discord.js": "^14.16.3",
+    "dotenv-safe": "^9.1.0",
+    "mineflayer": "^4.23.0",
+    "prismarine-viewer": "^1.28.0"
   }
 }
