@@ -521,20 +521,26 @@ function makeMCBot() {
       discordbot,
       "<@" + process.env.DISCORD_USER_ID + ">, Kicked for reason: " + reason
     );
+    mcbot.end();
   });
   
   mcbot.on("error", (error) => {
     console.error('Minecraft bot error:', error);
     mcbot.end();
-    setTimeout(() => {
-      makeMCBot();
-    }, 5000);
     sendMessage(discordbot, error);
   });
 
   mcbot.on('warn', (warning) => {
     console.warn('Warning:', warning);
   });
+  
+  mcbot.on('end', (reason) => {
+    console.log('Bot ended:', reason);
+    setTimeout(() => {
+      makeMCBot();
+    }, 5000);
+  });
+
 }
 
 process.on('uncaughtException', (err) => {

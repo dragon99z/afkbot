@@ -1,4 +1,4 @@
-const { REST, Routes,SlashCommandBuilder,PermissionFlagsBits } = require('discord.js');
+const { REST, Routes } = require('discord.js');
 require("dotenv-safe").config();
 const fs = require('node:fs');
 const path = require('node:path');
@@ -12,46 +12,21 @@ const commands = [];
 const foldersPath = path.join(__dirname, 'commands');
 const commandFolders = fs.readdirSync(foldersPath);
 
-sellCommand = new SlashCommandBuilder()
-		.setName('sell')
-		.setDescription('Sells the items')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .setDMPermission(false);
-sellCommand.execute = async (interaction) => {
-    selling = true;
-    doTrades(mcbot, discordbot);
-    await interaction.reply(`Selling the items.`);
+for (const folder of commandFolders) {
+	// Grab all the command files from the commands directory you created earlier
+	const commandsPath = path.join(foldersPath, folder);
+	const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+	// Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
+	for (const file of commandFiles) {
+		const filePath = path.join(commandsPath, file);
+		const command = require(filePath);
+		if ('data' in command) {
+			commands.push(command.data.toJSON());
+		} else {
+			console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+		}
+	}
 }
-
-msgCommand = new SlashCommandBuilder()
-		.setName('msg')
-		.setDescription('Send Message')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .setDMPermission(false)
-        .addStringOption(option =>
-            option.setName('message')
-                .setDescription('The message to be send')
-                .setRequired(true));
-msgCommand.execute = async (interaction) => {
-    mcbot.chat(interaction.options.getString('message'));
-    await interaction.reply(`Message Send!`);
-}
-
-stopCommand = new SlashCommandBuilder()
-		.setName('stop')
-		.setDescription('Stop the Bot')
-    .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-    .setDMPermission(false);
-stopCommand.execute = async (interaction) => {
-    mcbot.end();
-    await interaction.reply(`Bot Stopped!`);
-    discordbot.logout();
-    exit();
-}
-
-commands.push(sellCommand.toJSON());
-commands.push(msgCommand.toJSON());
-commands.push(stopCommand.toJSON());
 
 // Construct and prepare an instance of the REST module
 const rest = new REST().setToken(token);
