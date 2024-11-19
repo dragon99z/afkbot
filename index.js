@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const axios = require('axios');
 const path = require('node:path');
 const { exit } = require('node:process');
+
 const {sellCommand, stopCommand, msgCommand} = require("./commands.js");
 const { Client, GatewayIntentBits, ActivityType, Collection, Events, SlashCommandBuilder,PermissionFlagsBits } = require("discord.js");
 const discordbot = new Client({
@@ -12,11 +13,21 @@ const discordbot = new Client({
   ],
 });
 
+const checkOnline = require("./libs/checkOnline.js");
+const checkStatus = require("./libs/checkStatus.js");
+const deathCount = require("./libs/deathCount.js");
+const doTrades = require("./libs/doTrades.js");
+const ensureLocation = require("./libs/ensureLocation.js");
+const runtimer = require("./libs/runtimer.js");
+const sendMessage = require("./libs/sendMessage.js");
+const startBank = require("./libs/startBank.js");
+const visitPlayer = require("./libs/visitPlayer.js");
+
 discordbot.commands = new Collection();
 
 sellCommand.execute = async (interaction) => {
     selling = true;
-    doTrades(mcbot, discordbot);
+    windowid = doTrades(mcbot, discordbot);
     await interaction.reply(`Selling the items.`);
 }
 
@@ -84,285 +95,6 @@ discordbot.on(Events.InteractionCreate, async interaction => {
 	}
 });
 
-function startBank(mcbot, discordbot) {
-  console.log("starting");
-  mcbot.setQuickBarSlot("1");
-  mcbot.activateItem();
-  handleBank(mcbot, discordbot);
-}
-
-function handleBank(mcbot, discordbot) {
-  let i;
-  mcbot.on("windowOpen", (window) => {
-    if (window.title.includes("Bank")) {
-      console.log("bank menu opened");
-      i++;
-      console.log(i);
-      setTimeout(() => {
-        mcbot.clickWindow(11, 0, 0, (err) => {
-          console.log(err);
-          setTimeout(() => {
-            window.close(window.id);
-            console.log("successfully sold items and deposited coins");
-          }, 1000);
-        });
-      }, 2000);
-    }
-  });
-}
-
-function doTrades(mcbot, discordbot) {
-  selling = true;
-
-  mcbot.chat("/l");
-  setTimeout(() => {
-    mcbot.chat("/skyblock");
-    setTimeout(() => {
-      mcbot.chat("/hub");
-      setTimeout(() => {
-        console.log("opening trades menu");
-        mcbot.chat("/trades");
-        mcbot.on("windowOpen", (window) => {
-          if (
-            window.type === "minecraft:chest" &&
-            window.title.includes("Trades")
-          ) {
-            windowid = window.id;
-            console.log("---Trades menu opened successfully---");
-            const sulfurItems = [{ name: "glowstone_dust" }, { name: "skull" }];
-            let slots = [];
-            window.items().forEach((item) => {
-              sulfurItems.forEach((sulfurItem) => {
-                if (item.name === sulfurItem.name) {
-                  slots.push(item.slot);
-                }
-              });
-            });
-            if (slots.length === 0) {
-              bzsell(mcbot, discordbot);
-            } else {
-              let slotIndex = 1;
-              slots.forEach((slot) => {
-                let localSlotIndex = slotIndex;
-                setTimeout(() => {
-                  mcbot.clickWindow(slot, 0, 0, (err) => {
-                    if (err) {
-                      console.log(err);
-                    } else {
-                      console.log("sulfur sold successfully");
-                    }
-                  });
-                  if (localSlotIndex == slots.length) {
-                    bzsell(mcbot, discordbot);
-                  }
-                }, 1000 * slotIndex);
-                slotIndex++;
-              });
-            }
-          }
-        });
-      }, 5000);
-    }, 3000);
-  }, 3000);
-}
-function bzsell(mcbot, discordbot) {
-  setTimeout(() => {
-    mcbot.closeWindow(windowid);
-    console.log("window closed");
-
-    setTimeout(() => {
-      mcbot.chat("/bz");
-      mcbot.on("windowOpen", (window) => {
-        if (window.title.includes("Bazaar")) {
-          windowid = window.id;
-          console.log("---Bazaar menu opened successfully---");
-          confirmsell(mcbot, discordbot);
-          mcbot.clickWindow(48, 0, 0, (err) => {
-            if (err) {
-              console.log(err);
-            } else {
-              console.log("opened sell sacks menu");
-            }
-          });
-        }
-      });
-    }, 1000);
-  }, 100);
-}
-
-function confirmsell(mcbot, discordbot) {
-  mcbot.on("windowOpen", (window) => {
-    if (window.title.includes("sure?")) {
-      windowid = window.id;
-      console.log("confirm sell menu opened");
-      setTimeout(() => {
-        mcbot.clickWindow(11, 0, 0, (err) => {
-          if (err) {
-            console.log(err);
-          } else {
-            console.log("sell confirmed");
-          }
-        });
-      }, 500);
-      // console.log(window);
-    }
-  });
-}
-
-function checkStatus(mcbot) {
-  setInterval(() => {
-    if (
-      JSON.stringify(mcbot.scoreboard.sidebar.items).includes(
-        'text":"Your Isla'
-      )
-    ) {
-      console.log("\x1b[32m%s\x1b[0m", "Already on island");
-    } else {
-      mcbot.chat("/locraw");
-      if (!selling) {
-        sendMessage(discordbot, "Not on private island- relocating");
-        console.log("\x1b[32m%s\x1b[0m", "Not on private island- relocating");
-      } else if (selling) {
-        sendMessage(
-          discordbot,
-          "Not on private island- currently selling items"
-        );
-        console.log(
-          "\x1b[32m%s\x1b[0m",
-          "Not on private island- currently selling items"
-        );
-      }
-    }
-  }, 10000);
-}
-
-function checkOnline(mcbot, discordbot) {
-  setInterval(() => {
-    axios.get(`https://api.hypixel.net/status?key=${api}&uuid=${botid}`)
-        .then((response) => {
-          // console.log(json);
-          if (!response.data.session.online) {
-            discordbot.user.setActivity({
-              name: "offline",
-              type: ActivityType.Playing,
-            });
-            discordbot.user.setStatus("idle");
-            mcbot = mineflayer.createBot({
-              version: "1.8.9",
-              username: process.env.MICROSOFT_EMAIL,
-              auth: "microsoft",
-              host: "hypixel.net",
-              port: 25565,
-            });
-          }
-        }).catch(error => {
-          console.error('Error fetching hypixel API:', error);
-        });
-    console.timeLog("timeElapsed");
-  }, 10000);
-}
-
-function ensureLocation(mcbot, discordbot, message) {
-  if (selling === false) {
-    var location = JSON.parse(message);
-    console.log(location);
-    if (location.gametype == "SKYBLOCK" && location.map == "Private Island") {
-      return;
-    } else if (
-      location.gametype == "SKYBLOCK" &&
-      location.map != "Private Island" &&
-      selling == false
-    ) {
-      setTimeout(() => {
-        if (!selling) {
-          mcbot.chat("/is");
-        }
-        mcbot.setQuickBarSlot("0");
-      }, 3000);
-    } else if (location.server == "limbo" && selling == false) {
-      setTimeout(() => {
-        mcbot.chat("/l ptl");
-        setTimeout(() => {
-          mcbot.chat("/skyblock");
-          setTimeout(() => {
-            if (!selling) {
-              mcbot.chat("/is");
-            }
-            mcbot.setQuickBarSlot("0");
-          }, 10000);
-        }, 10000);
-      }, 3000);
-    } else if (location.gametype != "SKYBLOCK" && selling == false) {
-      setTimeout(() => {
-        mcbot.chat("/skyblock");
-        setTimeout(() => {
-          if (!selling) {
-            mcbot.chat("/is");
-          }
-          mcbot.setQuickBarSlot("0");
-        }, 10000);
-      }, 3000);
-    }
-  }
-}
-
-function deathCount(mcbot, discordbot) {
-  const deathregex = /^[a-zA-Z]+:\s*\d+$/;
-  mcbot.on("messagestr", (message) => {
-    if (deathregex.test(message) && message.includes(`${mcbot.username}:`)) {
-      deaths = message.split(`${mcbot.username}: `)[1].trim();
-    }
-  });
-}
-
-function sendMessage(discordbot, message) {
-  if (message.toString().trim() === '') {
-    console.log('Skipping empty message');
-    return;
-  }
-  if((typeof message === "string" && message.length === 0) || message === null)
-    return;
-
-  const channel = discordbot.channels.cache.get(process.env.DISCORD_CHANNEL_ID);
-  if (!channel) {
-    console.error('Error: DISCORD_CHANNEL_ID is not set or is invalid');
-    return;
-  }
-
-  channel.send(message).catch(error => {
-    console.error('Error sending message:', error);
-  });
-}
-
-function visitPlayer() {
-  setTimeout(() => {
-    mcbot.simpleClick.leftMouse(11);
-  }, 5000);
-}
-
-function runAtMidnight(mcbot, discordbot) {
-  // Get the current date/time in the user's timezone
-  const now = new Date();
-
-  // Get the current date/time in Eastern Standard Time (EST)
-  const estTime = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/New_York" })
-  );
-
-  // Check if it's currently midnight EST
-  if (estTime.getHours() === 0 && estTime.getMinutes() === 0) {
-    // Call your function here
-    doTrades(mcbot, discordbot);
-  }
-}
-
-// Call the function every minute to check if it's midnight EST
-function runtimer(mcbot, discordbot) {
-  setInterval(() => {
-    runAtMidnight(mcbot, discordbot);
-  }, 60 * 1000);
-}
-
 function makeMCBot() {
 
   mcbot = mineflayer.createBot({
@@ -379,7 +111,8 @@ function makeMCBot() {
     discordbot.user.setActivity({
       name: "Hypixel",
       type: ActivityType.Playing,
-      timestamps: { start: startTime },
+      timestamps: { start: Date.now() },
+      applicationId: 1308473311558369320,
     });
     discordbot.user.setStatus("online");
     runtimer(mcbot, discordbot);
@@ -391,8 +124,8 @@ function makeMCBot() {
     axios.get('https://playerdb.co/api/player/minecraft/' + mcbot.username)
     .then(response => {
       botid = response.data.data.player.raw_id;
-      checkStatus(mcbot);
-      checkOnline(mcbot, discordbot);
+      checkStatus(mcbot, discordbot, selling);
+      checkOnline(mcbot, discordbot, api, botid);
     })
     .catch(error => {
       console.error('Error fetching Mojang API:', error);
@@ -410,7 +143,7 @@ function makeMCBot() {
   mcbot.on("messagestr", (message) => {
     if (message.startsWith('{"server":"')) {
       if (!selling) {
-        ensureLocation(mcbot, discordbot, message);
+        selling = ensureLocation(mcbot, discordbot, message, selling);
       }
     } else if (
       !message.includes("❈ Defense") &&
@@ -439,7 +172,7 @@ function makeMCBot() {
         process.exit();
       }, 3000);
     } else if (message.startsWith("Finding player...")) {
-      visitPlayer();
+      visitPlayer(mcbot);
     } else if (
       message.startsWith("From ") ||
       message.startsWith("To ") ||
@@ -473,7 +206,7 @@ function makeMCBot() {
       );
     } else if (message.includes("fell into the void.")) {
       if (deaths === 0) {
-        deathCount(mcbot, discordbot);
+        deaths = deathCount(mcbot, discordbot, deaths);
         setTimeout(() => {
           mcbot.chat("/deathcount");
         }, 1000);
