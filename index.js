@@ -21,6 +21,7 @@ const ensureLocation = require("./libs/ensureLocation.js");
 const runtimer = require("./libs/runtimer.js");
 const sendMessage = require("./libs/sendMessage.js");
 const startBank = require("./libs/startBank.js");
+const updateDCActivity = require("./libs/updateDCActivity.js");
 const visitPlayer = require("./libs/visitPlayer.js");
 
 discordbot.commands = new Collection();
@@ -115,6 +116,7 @@ function makeMCBot() {
       applicationId: 1308473311558369320,
     });
     discordbot.user.setStatus("online");
+    updateDCActivity(mcbot, discordbot);
     runtimer(mcbot, discordbot);
   
     if (process.env.USE_PRISMARINE_VIEWER === "TRUE") {

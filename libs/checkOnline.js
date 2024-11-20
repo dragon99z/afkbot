@@ -23,6 +23,6 @@ module.exports = function checkOnline(mcbot, discordbot,api,botid) {
             console.error('Error fetching hypixel API:', error);
           });
       console.timeLog("timeElapsed");
-    }, 10000);
+    }, 1000*60*5);
   }
 
