@@ -99,7 +99,7 @@ discordbot.on(Events.InteractionCreate, async interaction => {
 function makeMCBot() {
 
   mcbot = mineflayer.createBot({
-    version: "1.8.9",
+    version: process.env.MINECRAFT_VERSION,
     username: process.env.MICROSOFT_EMAIL,
     auth: "microsoft",
     host: "hypixel.net",
@@ -121,6 +121,7 @@ function makeMCBot() {
   
     if (process.env.USE_PRISMARINE_VIEWER === "TRUE") {
       mineflayerViewer(mcbot, { port: process.env.PRISMARINE_VIEWER_PORT });
+      
     } else console.log("Prismarine viewer disabled, skipping startup");
   //https://api.mojang.com/users/profiles/minecraft/
     axios.get('https://playerdb.co/api/player/minecraft/' + mcbot.username)

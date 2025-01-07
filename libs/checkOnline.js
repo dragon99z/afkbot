@@ -31,7 +31,7 @@ module.exports = function checkOnline(mcbot, discordbot,api,botid) {
             });
             discordbot.user.setStatus("idle");
             mcbot = mineflayer.createBot({
-              version: "1.8.9",
+              version: process.env.MINECRAFT_VERSION,
               username: process.env.MICROSOFT_EMAIL,
               auth: "microsoft",
               host: "hypixel.net",
