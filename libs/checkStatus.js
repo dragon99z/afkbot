@@ -2,7 +2,7 @@ const sendMessage = require("./sendMessage.js");
 
 module.exports = function checkStatus(mcbot, discordbot,selling) {
     setInterval(() => {
-      if (mcbot.scoreboard.sidebar.items != null){
+      try{
         if (
           JSON.stringify(mcbot.scoreboard.sidebar.items).includes(
             'text":"Your Isla'
@@ -25,7 +25,7 @@ module.exports = function checkStatus(mcbot, discordbot,selling) {
             );
           }
         }
-      }else{
+      }catch (TypeError){
         mcbot.chat("/locraw");
         sendMessage(discordbot, "Bot in Limbo - relocating");
       }
